@@ -1,0 +1,6 @@
+{
+  "name": "KAIRO – Pre-Owned Luxury Motors",
+  "description": "KAIRO is a curated pre-owned luxury and performance automobile marketplace featuring verified specifications, vehicle comparison, EMI calculation, private showroom viewing, bespoke services, and KAIRO Realty.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

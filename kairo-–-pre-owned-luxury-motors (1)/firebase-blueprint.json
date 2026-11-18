@@ -1,0 +1,289 @@
+{
+  "entities": {
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Complete pre-owned luxury vehicle inventory record with model-specific technical specifications, features, ownership history, pricing, and image gallery.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "stockId": { "type": "string", "maxLength": 64 },
+        "brand": { "type": "string", "maxLength": 80 },
+        "model": { "type": "string", "maxLength": 120 },
+        "variant": { "type": "string", "maxLength": 140 },
+        "manufacturingYear": { "type": "number" },
+        "registrationYear": { "type": "number" },
+        "registrationState": { "type": "string", "maxLength": 80 },
+        "registrationNumber": { "type": "string", "maxLength": 40 },
+        "vin": { "type": "string", "maxLength": 40 },
+        "bodyType": { "type": "string", "maxLength": 60 },
+        "category": { "type": "string", "maxLength": 80 },
+        "categories": { "type": "array" },
+        "mileage": { "type": "number" },
+        "fuelType": { "type": "string", "maxLength": 40 },
+        "transmission": { "type": "string", "maxLength": 80 },
+        "exteriorColour": { "type": "string", "maxLength": 80 },
+        "interiorColour": { "type": "string", "maxLength": 80 },
+        "ownershipCount": { "type": "number" },
+        "askingPrice": { "type": "number" },
+        "availability": {
+          "type": "string",
+          "enum": ["Available", "Reserved", "Sold", "In Inspection", "Newly Arrived"]
+        },
+        "featured": { "type": "boolean" },
+        "description": { "type": "string", "maxLength": 4000 },
+        "primaryImage": { "type": "string", "maxLength": 500 },
+        "galleryImages": { "type": "array" },
+        "engineSpecs": { "type": "object" },
+        "drivetrainSpecs": { "type": "object" },
+        "dimensionsSpecs": { "type": "object" },
+        "exteriorFeatures": { "type": "object" },
+        "interiorFeatures": { "type": "object" },
+        "infotainmentFeatures": { "type": "object" },
+        "safetyFeatures": { "type": "object" },
+        "documentationSpecs": { "type": "object" },
+        "pricingSpecs": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["stockId", "brand", "model", "variant", "manufacturingYear", "mileage", "fuelType", "transmission", "askingPrice", "availability"]
+    },
+    "Brand": {
+      "title": "Brand",
+      "description": "Supported luxury automobile manufacturer and model catalogue.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 80 },
+        "country": { "type": "string", "maxLength": 60 },
+        "models": { "type": "array" },
+        "featured": { "type": "boolean" }
+      },
+      "required": ["name", "models"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Authenticated customer profile with PII isolated to owner and admins.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "city": { "type": "string", "maxLength": 80 },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "Customer saved vehicle reference.",
+      "type": "object",
+      "properties": {
+        "vehicleId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicleId", "userId"]
+    },
+    "Enquiry": {
+      "title": "Enquiry",
+      "description": "Customer vehicle or general showroom enquiry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "mobile": { "type": "string", "maxLength": 30 },
+        "category": { "type": "string", "maxLength": 80 },
+        "vehicleId": { "type": "string", "maxLength": 128 },
+        "vehicleName": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["Pending", "In Progress", "Completed", "Archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "email", "mobile", "category", "status"]
+    },
+    "SellCarRequest": {
+      "title": "SellCarRequest",
+      "description": "Customer submission to sell a luxury vehicle through KAIRO.",
+      "type": "object",
+      "properties": {
+        "referenceId": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 120 },
+        "mobile": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "brand": { "type": "string", "maxLength": 80 },
+        "model": { "type": "string", "maxLength": 120 },
+        "variant": { "type": "string", "maxLength": 120 },
+        "manufacturingYear": { "type": "number" },
+        "registrationYear": { "type": "number" },
+        "mileage": { "type": "number" },
+        "fuelType": { "type": "string", "maxLength": 40 },
+        "transmission": { "type": "string", "maxLength": 60 },
+        "exteriorColour": { "type": "string", "maxLength": 60 },
+        "previousOwners": { "type": "number" },
+        "expectedPrice": { "type": "number" },
+        "location": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "imageUrls": { "type": "array" },
+        "status": { "type": "string", "enum": ["Pending", "Under Review", "Valuation Sent", "Completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["referenceId", "fullName", "mobile", "email", "brand", "model", "manufacturingYear", "expectedPrice", "status"]
+    },
+    "TestDriveRequest": {
+      "title": "TestDriveRequest",
+      "description": "Customer scheduled test drive or private viewing booking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "vehicleId": { "type": "string", "maxLength": 128 },
+        "vehicleName": { "type": "string", "maxLength": 200 },
+        "stockId": { "type": "string", "maxLength": 64 },
+        "fullName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "mobile": { "type": "string", "maxLength": 30 },
+        "showroomCity": { "type": "string", "maxLength": 80 },
+        "preferredDate": { "type": "string", "maxLength": 40 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["Pending", "Confirmed", "Completed", "Cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicleId", "vehicleName", "fullName", "email", "mobile", "preferredDate", "status"]
+    },
+    "ServiceRequest": {
+      "title": "ServiceRequest",
+      "description": "Customer booking for KAIRO Modification, Servicing, or Detailing.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "serviceCategory": { "type": "string", "enum": ["Car Modification", "Car Servicing", "Car Detailing"] },
+        "serviceName": { "type": "string", "maxLength": 140 },
+        "vehicleBrandModel": { "type": "string", "maxLength": 160 },
+        "fullName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "mobile": { "type": "string", "maxLength": 30 },
+        "preferredDate": { "type": "string", "maxLength": 40 },
+        "notes": { "type": "string", "maxLength": 1500 },
+        "status": { "type": "string", "enum": ["Pending", "Scheduled", "Completed", "Cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["serviceCategory", "serviceName", "fullName", "email", "mobile", "status"]
+    },
+    "Showroom": {
+      "title": "Showroom",
+      "description": "KAIRO showroom location metadata and coordinates.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "city": { "type": "string", "maxLength": 80 },
+        "regionLabel": { "type": "string", "maxLength": 80 },
+        "address": { "type": "string", "maxLength": 300 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "email": { "type": "string", "maxLength": 120 },
+        "hours": { "type": "string", "maxLength": 120 },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "isSample": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["city", "address", "phone", "hours", "lat", "lng"]
+    },
+    "InspectionReport": {
+      "title": "InspectionReport",
+      "description": "Vehicle inspection documentation and technical checklist.",
+      "type": "object",
+      "properties": {
+        "vehicleId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "maxLength": 80 },
+        "summary": { "type": "string", "maxLength": 1500 },
+        "inspectorName": { "type": "string", "maxLength": 120 },
+        "inspectedDate": { "type": "string", "maxLength": 40 },
+        "documentUrl": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicleId", "status", "summary"]
+    },
+    "SiteContent": {
+      "title": "SiteContent",
+      "description": "Admin-managed homepage content, special offers, and featured collections.",
+      "type": "object",
+      "properties": {
+        "featuredVehicleIds": { "type": "array" },
+        "specialOffers": { "type": "array" },
+        "heroTitle": { "type": "string", "maxLength": 200 },
+        "heroSubtitle": { "type": "string", "maxLength": 600 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator identity mapping.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "role": { "type": "string", "enum": ["admin", "super_admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/vehicles/{vehicleId}": {
+      "schema": { "$ref": "#/entities/Vehicle" },
+      "description": "Pre-owned luxury vehicle inventory records."
+    },
+    "/brands/{brandId}": {
+      "schema": { "$ref": "#/entities/Brand" },
+      "description": "Luxury automotive brands and supported model lists."
+    },
+    "/customers/{userId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customer profile records isolated to owner and administrators."
+    },
+    "/customers/{userId}/wishlists/{vehicleId}": {
+      "schema": { "$ref": "#/entities/WishlistItem" },
+      "description": "Customer saved wishlist vehicles."
+    },
+    "/enquiries/{enquiryId}": {
+      "schema": { "$ref": "#/entities/Enquiry" },
+      "description": "Customer purchase and general enquiries."
+    },
+    "/sell_car_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/SellCarRequest" },
+      "description": "Customer Sell Your Car valuation submissions."
+    },
+    "/test_drive_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/TestDriveRequest" },
+      "description": "Customer test drive and private showroom viewing requests."
+    },
+    "/service_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/ServiceRequest" },
+      "description": "Modification, servicing, and detailing bookings."
+    },
+    "/showrooms/{showroomId}": {
+      "schema": { "$ref": "#/entities/Showroom" },
+      "description": "Showroom locations and contact details."
+    },
+    "/inspection_reports/{reportId}": {
+      "schema": { "$ref": "#/entities/InspectionReport" },
+      "description": "Vehicle inspection documentation."
+    },
+    "/site_content/{docId}": {
+      "schema": { "$ref": "#/entities/SiteContent" },
+      "description": "Editable website content and special offers."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Authorized administrator registry."
+    }
+  }
+}

@@ -1,0 +1,322 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'abhiramkalakota06@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation helpers
+    function isValidVehicle(data) {
+      return data.keys().hasAll(['stockId', 'brand', 'model', 'variant', 'manufacturingYear', 'mileage', 'fuelType', 'transmission', 'askingPrice', 'availability']) &&
+        data.keys().hasOnly([
+          'id', 'stockId', 'brand', 'model', 'variant', 'manufacturingYear', 'registrationYear',
+          'registrationState', 'registrationNumber', 'vin', 'bodyType', 'category', 'categories',
+          'mileage', 'fuelType', 'transmission', 'exteriorColour', 'interiorColour', 'ownershipCount',
+          'askingPrice', 'availability', 'featured', 'description', 'primaryImage', 'galleryImages',
+          'engineSpecs', 'drivetrainSpecs', 'dimensionsSpecs', 'exteriorFeatures', 'interiorFeatures',
+          'infotainmentFeatures', 'safetyFeatures', 'documentationSpecs', 'pricingSpecs',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.stockId is string && data.stockId.size() >= 1 && data.stockId.size() <= 64 &&
+        data.brand is string && data.brand.size() >= 1 && data.brand.size() <= 80 &&
+        data.model is string && data.model.size() >= 1 && data.model.size() <= 120 &&
+        data.variant is string && data.variant.size() >= 1 && data.variant.size() <= 140 &&
+        data.manufacturingYear is number && data.manufacturingYear >= 1980 && data.manufacturingYear <= 2030 &&
+        data.mileage is number && data.mileage >= 0 &&
+        data.fuelType is string && data.fuelType.size() >= 1 && data.fuelType.size() <= 40 &&
+        data.transmission is string && data.transmission.size() >= 1 && data.transmission.size() <= 80 &&
+        data.askingPrice is number && data.askingPrice >= 0 &&
+        data.availability in ['Available', 'Reserved', 'Sold', 'In Inspection', 'Newly Arrived'];
+    }
+
+    function isValidBrand(data) {
+      return data.keys().hasAll(['name', 'models']) &&
+        data.keys().hasOnly(['id', 'name', 'country', 'models', 'featured', 'updatedAt']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.models is list && data.models.size() >= 1 && data.models.size() <= 100 &&
+        data.models[0] is string;
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'email', 'phone', 'city', 'role', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.role in ['customer', 'admin'] &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 120)) &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+        (!('city' in data) || (data.city is string && data.city.size() <= 80));
+    }
+
+    function isValidWishlist(data, userId, vehicleId) {
+      return data.keys().hasAll(['vehicleId', 'userId', 'createdAt']) &&
+        data.keys().hasOnly(['vehicleId', 'userId', 'createdAt']) &&
+        data.userId == userId &&
+        data.vehicleId == vehicleId &&
+        data.createdAt == request.time;
+    }
+
+    function isValidEnquiry(data) {
+      return data.keys().hasAll(['fullName', 'email', 'mobile', 'category', 'status', 'userId', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'fullName', 'email', 'mobile', 'category', 'vehicleId', 'vehicleName', 'message', 'status', 'createdAt', 'updatedAt']) &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.mobile is string && data.mobile.size() >= 6 && data.mobile.size() <= 30 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 80 &&
+        data.status in ['Pending', 'In Progress', 'Completed', 'Archived'] &&
+        (!('vehicleId' in data) || (data.vehicleId is string && data.vehicleId.size() <= 128)) &&
+        (!('vehicleName' in data) || (data.vehicleName is string && data.vehicleName.size() <= 200)) &&
+        (!('message' in data) || (data.message is string && data.message.size() <= 2000));
+    }
+
+    function isValidSellCarRequest(data) {
+      return data.keys().hasAll(['referenceId', 'userId', 'fullName', 'mobile', 'email', 'brand', 'model', 'manufacturingYear', 'expectedPrice', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'referenceId', 'userId', 'fullName', 'mobile', 'email', 'brand', 'model', 'variant',
+          'manufacturingYear', 'registrationYear', 'mileage', 'fuelType', 'transmission',
+          'exteriorColour', 'previousOwners', 'expectedPrice', 'location', 'description',
+          'imageUrls', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.referenceId is string && data.referenceId.size() >= 4 && data.referenceId.size() <= 64 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.mobile is string && data.mobile.size() >= 6 && data.mobile.size() <= 30 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.brand is string && data.brand.size() >= 1 && data.brand.size() <= 80 &&
+        data.model is string && data.model.size() >= 1 && data.model.size() <= 120 &&
+        data.manufacturingYear is number && data.manufacturingYear >= 1980 && data.manufacturingYear <= 2030 &&
+        data.expectedPrice is number && data.expectedPrice >= 0 &&
+        data.status in ['Pending', 'Under Review', 'Valuation Sent', 'Completed'] &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+        (!('imageUrls' in data) || (data.imageUrls is list && data.imageUrls.size() <= 10));
+    }
+
+    function isValidTestDriveRequest(data) {
+      return data.keys().hasAll(['userId', 'vehicleId', 'vehicleName', 'fullName', 'email', 'mobile', 'preferredDate', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'vehicleId', 'vehicleName', 'stockId', 'fullName', 'email', 'mobile', 'showroomCity', 'preferredDate', 'notes', 'status', 'createdAt', 'updatedAt']) &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.vehicleId is string && data.vehicleId.size() >= 1 && data.vehicleId.size() <= 128 &&
+        data.vehicleName is string && data.vehicleName.size() >= 1 && data.vehicleName.size() <= 200 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.mobile is string && data.mobile.size() >= 6 && data.mobile.size() <= 30 &&
+        data.preferredDate is string && data.preferredDate.size() >= 4 && data.preferredDate.size() <= 40 &&
+        data.status in ['Pending', 'Confirmed', 'Completed', 'Cancelled'] &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000));
+    }
+
+    function isValidServiceRequest(data) {
+      return data.keys().hasAll(['userId', 'serviceCategory', 'serviceName', 'fullName', 'email', 'mobile', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['userId', 'serviceCategory', 'serviceName', 'vehicleBrandModel', 'fullName', 'email', 'mobile', 'preferredDate', 'notes', 'status', 'createdAt', 'updatedAt']) &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.serviceCategory in ['Car Modification', 'Car Servicing', 'Car Detailing'] &&
+        data.serviceName is string && data.serviceName.size() >= 1 && data.serviceName.size() <= 140 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.mobile is string && data.mobile.size() >= 6 && data.mobile.size() <= 30 &&
+        data.status in ['Pending', 'Scheduled', 'Completed', 'Cancelled'] &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1500));
+    }
+
+    function isValidShowroom(data) {
+      return data.keys().hasAll(['city', 'address', 'phone', 'hours', 'lat', 'lng']) &&
+        data.keys().hasOnly(['id', 'city', 'regionLabel', 'address', 'phone', 'email', 'hours', 'lat', 'lng', 'isSample', 'updatedAt']) &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
+        data.address is string && data.address.size() >= 5 && data.address.size() <= 300 &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
+        data.hours is string && data.hours.size() >= 3 && data.hours.size() <= 120 &&
+        data.lat is number && data.lng is number;
+    }
+
+    function isValidInspectionReport(data) {
+      return data.keys().hasAll(['vehicleId', 'status', 'summary']) &&
+        data.keys().hasOnly(['vehicleId', 'status', 'summary', 'inspectorName', 'inspectedDate', 'documentUrl', 'updatedAt']) &&
+        data.vehicleId is string && data.vehicleId.size() >= 1 && data.vehicleId.size() <= 128 &&
+        data.status is string && data.status.size() >= 1 && data.status.size() <= 80 &&
+        data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 1500;
+    }
+
+    function isValidSiteContent(data) {
+      return data.keys().hasOnly(['featuredVehicleIds', 'specialOffers', 'heroTitle', 'heroSubtitle', 'updatedAt']) &&
+        (!('heroTitle' in data) || (data.heroTitle is string && data.heroTitle.size() <= 200)) &&
+        (!('heroSubtitle' in data) || (data.heroSubtitle is string && data.heroSubtitle.size() <= 600)) &&
+        (!('featuredVehicleIds' in data) || (data.featuredVehicleIds is list && data.featuredVehicleIds.size() <= 24)) &&
+        (!('specialOffers' in data) || (data.specialOffers is list && data.specialOffers.size() <= 20));
+    }
+
+    // 1. Vehicles
+    match /vehicles/{vehicleId} {
+      allow get: if isValidId(vehicleId);
+      allow list: if true;
+      allow create: if isValidId(vehicleId) && isAdmin() && isValidVehicle(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isValidId(vehicleId) && isAdmin() && isValidVehicle(incoming()) && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
+      allow delete: if isValidId(vehicleId) && isAdmin();
+    }
+
+    // 2. Brands
+    match /brands/{brandId} {
+      allow get: if isValidId(brandId);
+      allow list: if true;
+      allow create, update: if isValidId(brandId) && isAdmin() && isValidBrand(incoming());
+      allow delete: if isValidId(brandId) && isAdmin();
+    }
+
+    // 3. Customers (PII isolated)
+    match /customers/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isOwner(userId) && isValidCustomer(incoming()) &&
+        incoming().uid == request.auth.uid &&
+        incoming().role == 'customer' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isValidCustomer(incoming()) && (
+        isAdmin() ||
+        (isOwner(userId) &&
+         incoming().uid == existing().uid &&
+         incoming().role == existing().role &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().updatedAt == request.time &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'phone', 'city', 'updatedAt']))
+      );
+      allow delete: if isValidId(userId) && isAdmin();
+
+      // 4. Customer Wishlists subcollection
+      match /wishlists/{vehicleId} {
+        allow get: if isValidId(vehicleId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isValidId(vehicleId) && isOwner(userId) &&
+          isValidWishlist(incoming(), userId, vehicleId);
+        allow delete: if isValidId(vehicleId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // 5. Enquiries
+    match /enquiries/{enquiryId} {
+      allow get: if isValidId(enquiryId) && ((isVerified() && existing().userId == request.auth.uid) || isAdmin());
+      allow list: if (isVerified() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(enquiryId) && isValidEnquiry(incoming()) &&
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        ((isVerified() && incoming().userId == request.auth.uid) || (!isSignedIn() && incoming().userId == 'guest'));
+      allow update: if isValidId(enquiryId) && isAdmin() && isValidEnquiry(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'message']);
+      allow delete: if isValidId(enquiryId) && isAdmin();
+    }
+
+    // 6. Sell Car Requests
+    match /sell_car_requests/{requestId} {
+      allow get: if isValidId(requestId) && ((isVerified() && existing().userId == request.auth.uid) || isAdmin());
+      allow list: if (isVerified() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(requestId) && isValidSellCarRequest(incoming()) &&
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        ((isVerified() && incoming().userId == request.auth.uid) || (!isSignedIn() && incoming().userId == 'guest'));
+      allow update: if isValidId(requestId) && isAdmin() && isValidSellCarRequest(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'expectedPrice', 'description']);
+      allow delete: if isValidId(requestId) && isAdmin();
+    }
+
+    // 7. Test Drive Requests
+    match /test_drive_requests/{requestId} {
+      allow get: if isValidId(requestId) && ((isVerified() && existing().userId == request.auth.uid) || isAdmin());
+      allow list: if (isVerified() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(requestId) && isValidTestDriveRequest(incoming()) &&
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        ((isVerified() && incoming().userId == request.auth.uid) || (!isSignedIn() && incoming().userId == 'guest'));
+      allow update: if isValidId(requestId) && isValidTestDriveRequest(incoming()) && (
+        (isAdmin() && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'preferredDate', 'notes'])) ||
+        (isVerified() && existing().userId == request.auth.uid && existing().status == 'Pending' && incoming().status == 'Cancelled' && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+      );
+      allow delete: if isValidId(requestId) && isAdmin();
+    }
+
+    // 8. Service Requests
+    match /service_requests/{requestId} {
+      allow get: if isValidId(requestId) && ((isVerified() && existing().userId == request.auth.uid) || isAdmin());
+      allow list: if (isVerified() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(requestId) && isValidServiceRequest(incoming()) &&
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        ((isVerified() && incoming().userId == request.auth.uid) || (!isSignedIn() && incoming().userId == 'guest'));
+      allow update: if isValidId(requestId) && isAdmin() && isValidServiceRequest(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'preferredDate', 'notes']);
+      allow delete: if isValidId(requestId) && isAdmin();
+    }
+
+    // 9. Showrooms
+    match /showrooms/{showroomId} {
+      allow get: if isValidId(showroomId);
+      allow list: if true;
+      allow create, update: if isValidId(showroomId) && isAdmin() && isValidShowroom(incoming());
+      allow delete: if isValidId(showroomId) && isAdmin();
+    }
+
+    // 10. Inspection Reports
+    match /inspection_reports/{reportId} {
+      allow get: if isValidId(reportId);
+      allow list: if true;
+      allow create, update: if isValidId(reportId) && isAdmin() && isValidInspectionReport(incoming());
+      allow delete: if isValidId(reportId) && isAdmin();
+    }
+
+    // 11. Site Content
+    match /site_content/{docId} {
+      allow get: if isValidId(docId);
+      allow list: if true;
+      allow create, update: if isValidId(docId) && isAdmin() && isValidSiteContent(incoming());
+      allow delete: if isValidId(docId) && isAdmin();
+    }
+
+    // 12. Admins
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list, create, update, delete: if isAdmin();
+    }
+  }
+}
